@@ -4,6 +4,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <time.h>
 
 typedef enum VectorDataType
 {
@@ -18,25 +19,81 @@ typedef struct Vector {
     size_t capacity;
 } Vector;
 
+// Creates an empty vector with zeroed-out properties. Note that you cannot append to this.
 Vector* vec_create_empty();
+// Creates a vector with enough space reserved to fit the amount (capacity)
+// of objects of the given type (use vec_create_size if this doesn't provide
+// the needed size).
 Vector* vec_create_type(size_t capacity, VectorDataType type);
+// Creates a vector with enough reserved space to fit as many objects of size
+// type_size as sepcified by capacity.
 Vector* vec_create_size(size_t capacity, size_t type_size);
-void    vec_free(Vector* v);
 
+// Returns a pointer to the object at the given index in the vector.
 void* vec_at(Vector* v, size_t i);
+// Returns the float at the given index in the vector.
 float vec_at_f(Vector* v, size_t i);
-int   vec_at_i(Vector* v, size_t i);
+// Returns the int at the given index in the vector.
+int vec_at_i(Vector* v, size_t i);
 
+// Appends data to the vector. It is assumed that data has the
+// exact size "type_size" specified during the creation of the vector.
 void vec_push_back(Vector* v, void* data);
+// Appends an int to the vector.
 void vec_push_back_i(Vector* v, int data);
+// Appends a float to the vector.
 void vec_push_back_f(Vector* v, float data);
+
+// Ensures that the vector has enough space to fit "size" many objects
+// of size v->type_size or more.
+void vec_reserve(Vector* v, size_t size);
+// Grows the vector's reserved space by "amount".
+void vec_reserve_grow(Vector* v, size_t amount);
+
+// Pretty-prints the vector's properties and data.
+void vec_debugprint(Vector* v);
+
+// Frees the vector's data and the vector itself, then sets the pointer to NULL.
+#define vec_free(v)        \
+    do {                   \
+        if (v)             \
+            free(v->data); \
+        free(v);           \
+        v = NULL;          \
+    } while (false)
+
+// ***************************************************************************
+
+void vec_reserve(Vector* v, size_t size) {
+    // we can return if we already have that much or more space reserved
+    if (v->capacity >= size)
+        return;
+}
+
+void vec_debugprint(Vector* v) {
+    puts(__FUNCTION__);
+    if (v == NULL) {
+        printf("Vector* is NULL\n");
+        return;
+    }
+    printf("Vector at %p\n", v);
+    printf(" size      = %5lu\n", v->size);
+    printf(" capacity  = %5lu\n", v->capacity);
+    printf(" type_size = %5lu\n", v->type_size);
+    printf(" data (%p) =\n {\n", v->data);
+    for (size_t i = 0; i < v->size; ++i)
+        printf("   [%lu]   %11i\n", i, vec_at_i(v, i));
+    printf(" }\n");
+}
 
 void vec_push_back(Vector* v, void* data) {
     if (v->size >= v->capacity) {
         ++v->capacity;
         v->data = realloc(v->data, v->capacity * v->type_size);
     }
-    memcpy(&((char*)v->data)[v->size * v->type_size], data, v->type_size);
+    // .75
+    // .015
+    memcpy((char*)v->data + v->size * v->type_size, data, v->type_size);
     ++v->size;
 }
 
@@ -101,13 +158,6 @@ Vector* vec_create_type(size_t capacity, VectorDataType type) {
     assert(false);
 }
 
-#define vec_free(v)           \
-    {                         \
-        if (v && v->capacity) \
-            free(v->data);    \
-        free(v);              \
-        v = NULL;             \
-    }
 
 void veci(void) {
     TEST_CASE("enough capacity");
@@ -225,11 +275,37 @@ void test_vec_create_type(void) {
     }
 }
 
+void test_mass_push_back(void) {
+    TEST_CASE("capacity 0");
+    clock_t start = clock();
+    Vector* v     = vec_create_type(0, VEC_INT);
+    for (int i = 0; i < 10000; ++i) {
+        vec_push_back_i(v, i);
+        TEST_CHECK(vec_at_i(v, v->size - 1) == i);
+    }
+    clock_t end = clock();
+    vec_free(v);
+
+    // printf("\nfirst run took %f seconds\n", ((double)(end - start)) / CLOCKS_PER_SEC);
+
+    start = clock();
+    v     = vec_create_type(10001, VEC_INT);
+    for (int i = 0; i < 10000; ++i) {
+        vec_push_back_i(v, i);
+        TEST_CHECK(vec_at_i(v, v->size - 1) == i);
+    }
+    end = clock();
+    vec_free(v);
+
+    // printf("\nsecond run took %f seconds\n", ((double)(end - start)) / CLOCKS_PER_SEC);
+}
+
 TEST_LIST = {
     { "create size", test_vec_create_size },
     { "create type", test_vec_create_type },
     { "int vector", veci },
     { "float vector", vecf },
+    { "mass push back", test_mass_push_back },
 
     { NULL, NULL }
 };
