@@ -3,6 +3,47 @@
 #include <stdlib.h>
 #include "Vector.h"
 
+void test_vec_reserve(void) {
+    Vector* v = vec_create_type(0, VEC_INT);
+    TEST_CHECK(v->capacity == 0);
+    vec_reserve(v, 5);
+    TEST_CHECK(v->capacity == 5);
+    TEST_CASE("reserving same amount");
+    vec_reserve(v, 5);
+    TEST_CHECK(v->capacity == 5);
+    TEST_CASE("reserving less than capacity");
+    vec_reserve(v, 2);
+    TEST_CHECK(v->capacity == 5);
+    TEST_CASE("check if memory works");
+    // write
+    for (int i = 0; i < 5; ++i) {
+        printf("i = %i\n", i);
+        vec_push_back_i(v, i);
+        vec_debugprint(v);
+        TEST_CASE(vec_at_i(v, i) == i);
+    }
+    TEST_CASE("integrity after reserve");
+    vec_reserve(v, 5);
+    // read only
+    for (int i = 0; i < 5; ++i) {
+        TEST_CASE(vec_at_i(v, i) == i);
+    }
+    TEST_CASE("write integrity after reserve grow");
+    vec_reserve_grow(v, 2);
+    // write
+    for (int i = 0; i < 5 + 2; ++i) {
+        vec_push_back_i(v, i);
+        TEST_CASE(vec_at_i(v, i) == i);
+    }
+    TEST_CASE("integrity after reserve < capacity");
+    vec_reserve(v, 3);
+    // read only
+    for (int i = 0; i < 5 + 2; ++i) {
+        TEST_CASE(vec_at_i(v, i) == i);
+    }
+    vec_free(v);
+}
+
 void veci(void) {
     TEST_CASE("enough capacity");
     Vector* int_vec = vec_create_type(5, VEC_INT);
@@ -151,6 +192,7 @@ TEST_LIST = {
     { "int vector", veci },
     { "float vector", vecf },
     { "mass push back", test_mass_push_back },
+    { "reserve", test_vec_reserve },
 
     { NULL, NULL }
 };

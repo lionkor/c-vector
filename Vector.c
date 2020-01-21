@@ -5,14 +5,19 @@
 
 #include "Vector.h"
 
+void vec_reserve_grow(Vector* v, size_t amount) {
+    vec_reserve(v, v->capacity + amount);
+}
+
 void vec_reserve(Vector* v, size_t size) {
     // we can return if we already have that much or more space reserved
     if (v->capacity >= size)
         return;
+    v->data     = realloc(v->data, size * v->type_size);
+    v->capacity = size;
 }
 
 void vec_debugprint(Vector* v) {
-    puts(__FUNCTION__);
     if (v == NULL) {
         printf("Vector* is NULL\n");
         return;
@@ -22,8 +27,12 @@ void vec_debugprint(Vector* v) {
     printf(" capacity  = %5lu\n", v->capacity);
     printf(" type_size = %5lu\n", v->type_size);
     printf(" data (%p) =\n {\n", v->data);
-    for (size_t i = 0; i < v->size; ++i)
-        printf("   [%lu]   %11i\n", i, vec_at_i(v, i));
+    for (size_t i = 0; i < v->capacity; ++i)
+        if (i > v->size) {
+            printf("   [%lu%s]   %11i\n", i, ">s", vec_at_i(v, i));
+        } else {
+            printf("   [%lu%s]   %11i\n", i, "", vec_at_i(v, i));
+        }
     printf(" }\n");
 }
 
